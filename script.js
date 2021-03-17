@@ -1,123 +1,74 @@
-function Star( props ){
-  return (
-    <div className={`star ${(props.value == 0) ? 'semi-active' : ''} ${(props.position <= props.rated) ? 'active' : ''} `} 
-         onMouseEnter={ props.onMouseEnter }
-         onMouseLeave={ props.onMouseLeave }
-         onClick={ props.onClick }
+const APIURL =
+    "https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&api_key=04c35731a5ee918f014970082a0088b1&page=1";
+const IMGPATH = "https://image.tmdb.org/t/p/w1280";
+const SEARCHAPI =
+    "https://api.themoviedb.org/3/search/movie?&api_key=04c35731a5ee918f014970082a0088b1&query=";
 
-    >
-      <i className="fas fa-star"></i>
-    </div>
-  );
+const main = document.getElementById("main");
+const form = document.getElementById("form");
+const search = document.getElementById("search");
+
+// initially get fav movies
+getMovies(APIURL);
+
+async function getMovies(url) {
+    const resp = await fetch(url);
+    const respData = await resp.json();
+
+    console.log(respData);
+
+    showMovies(respData.results);
 }
 
-function Rating( props ){
-  const messages = {
-    "1": "Oh. Sorry you had a bad experience :( ",
-    "2": "We will try to improve.",
-    "3": "Appreciate it!",
-    "4": "Thank you!", 
-    "5": "You're Awesome!"
-  };
-  
-  let rating = props.rating;
-  
-  return(
-      <div className={"after-rating-message " + ((rating > 0) ? 'show': '')} >
-          <span>You rated this {rating} star{rating > 1 ? 's' : ''}</span>
-          <br/>
-          <span>{ messages[rating] }</span>
-      </div>
-  );
-}
+function showMovies(movies) {
+    // clear main
+    main.innerHTML = "";
 
+    movies.forEach((movie) => {
+        const { poster_path, title, vote_average, overview } = movie;
 
-class RatingWidget extends React.Component {
-  constructor( props ) {
-    super( props );
-    this.state = {
-      stars: Array(5).fill(-1),
-      rated: 0
-    };
-  }
-  
-  handleMouseOver( i ) {
-    let currentRating = this.state.rated;
-    
-    if ( currentRating > 0 ) {
-      const hoverRatedStars = this.state.stars.slice();
-      _.fill( hoverRatedStars, 0, currentRating, i );
-      this.setState({ stars: hoverRatedStars });
-    }
-    else {
-      const hoverStars = Array(5).fill(-1);
-      _.fill( hoverStars, 0, 0, (i+1) );     
-      this.setState({ stars: hoverStars});
-    }
-  }
-  
-  handleMouseOut() {
-    let currentRating = this.state.rated;
-    if ( currentRating > 0) {
-      const resetRatedStars = this.state.stars.slice();
-      _.fill( resetRatedStars, -1, currentRating, resetRatedStars.length );
-      this.setState({stars: resetRatedStars});
-    }
-    else {
-      const resetStars = this.state.stars.slice();
-      _.fill( resetStars, -1, 0, resetStars.length );
-      this.setState({stars: resetStars});
-    }
-  }
-  
-  handleClick( i ) {
-    const clickedStar = this.state.stars.slice();
-    
-    _.fill( clickedStar, 1, 0, i );
-    _.fill( clickedStar, 1, i, clickedStar.length );
-      
-    this.setState({
-      stars: clickedStar,
-      rated: i
+        const movieEl = document.createElement("div");
+        movieEl.classList.add("movie");
+
+        movieEl.innerHTML = `
+            <img
+                src="${IMGPATH + poster_path}"
+                alt="${title}"
+            />
+            <div class="movie-info">
+                <h3>${title}</h3>
+                <span class="${getClassByRate(
+                    vote_average
+                )}">${vote_average}</span>
+            </div>
+            <div class="overview">
+                <h3>Overview:</h3>
+                ${overview}
+            </div>
+        `;
+
+        main.appendChild(movieEl);
     });
-  }
-  
-  
-  handleRating( rating ){
-    return (<Rating rating={this.state.rated} />)
-  }
-  
-  renderStar( i ){
-    return (
-      <Star 
-        position={i}
-        value={this.state.stars[i]} 
-        rated={this.state.rated}
-        onMouseEnter={ () => this.handleMouseOver(i) }
-        onMouseLeave={ () => this.handleMouseOut() }
-        onClick={ () => this.handleClick(i) }
-        />
-    );
-  }
-  
-  render(){
-    return (
-      <div className='rating-stars-widget-outer'>
-          <div className='rating-stars'>
-            {this.renderStar(1)}
-            {this.renderStar(2)}
-            {this.renderStar(3)}
-            {this.renderStar(4)}
-            {this.renderStar(5)}
-          </div>
-        
-          {this.handleRating( this.state.rated )}
-      </div>
-      
-      
-    );
-  }
 }
 
+function getClassByRate(vote) {
+    if (vote >= 8) {
+        return "green";
+    } else if (vote >= 5) {
+        return "orange";
+    } else {
+        return "red";
+    }
+}
 
-ReactDOM.render(<RatingWidget />, document.getElementById("widget"));
+form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const searchTerm = search.value;
+
+    if (searchTerm) {
+        getMovies(SEARCHAPI + searchTerm);
+
+        search.value = "";
+    }
+});
